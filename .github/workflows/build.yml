@@ -1,0 +1,61 @@
+name: Build from zip
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Unpack source
+        shell: pwsh
+        run: Expand-Archive -Path MHGURecomp-cn-src.zip -DestinationPath . -Force
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            make
+            git
+            diffutils
+            curl
+            mingw-w64-ucrt-x86_64-clang
+            mingw-w64-ucrt-x86_64-lld
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-sdl3
+            mingw-w64-ucrt-x86_64-shaderc
+            mingw-w64-ucrt-x86_64-nasm
+            mingw-w64-ucrt-x86_64-vulkan-headers
+            mingw-w64-ucrt-x86_64-vulkan-loader
+            mingw-w64-ucrt-x86_64-vulkan-memory-allocator
+            mingw-w64-ucrt-x86_64-python
+
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          cd MHGURecomp
+          make -j4
+
+      - name: Show result
+        shell: msys2 {0}
+        run: |
+          ls -lh MHGURecomp/build/mhgurecomp.exe
+          ls -lh MHGURecomp/build/fonts/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MHGURecomp-cn-windows
+          path: |
+            MHGURecomp/build/mhgurecomp.exe
+            MHGURecomp/build/*.dll
+            MHGURecomp/build/fonts/NotoSansSC-VF.ttf
+            MHGURecomp/build/licenses/**
+            MHGURecomp/build/pipelines.list
+          if-no-files-found: error
